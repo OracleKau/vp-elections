@@ -1,0 +1,11 @@
+{
+  "name": "oracle-vp-elections",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Oracle Club KAU — Vice President election voting site",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning server.js"
+  }
+}
