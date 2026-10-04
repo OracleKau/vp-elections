@@ -238,6 +238,15 @@
   .sheet p { color: var(--muted); margin-top: 10px; line-height: 1.55; }
   .sheet .row { display: flex; gap: 10px; margin-top: 26px; }
   .sheet .row .btn { flex: 1; padding: 15px 10px; }
+  .field { margin-top: 22px; text-align: left; }
+  .field label { display: block; font-family: 'Saira'; font-weight: 700; font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--crimson); margin: 0 0 8px 6px; }
+  .field input, .search {
+    width: 100%; padding: 15px 20px; border-radius: 18px; font: inherit; font-size: 16px; color: var(--snow);
+    background: rgba(255, 250, 250, .05); border: 1px solid rgba(255, 250, 250, .14); outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  .field input:focus, .search:focus { border-color: var(--crimson); box-shadow: 0 0 0 4px rgba(229, 43, 43, .18); }
+  .field input.bad { border-color: #ff6b6b; animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-6px) } 75% { transform: translateX(6px) } }
   .err { margin-top: 14px; color: #ff8a8a; font-size: 14px; min-height: 1em; }
 
   /* ---------- done state ---------- */
@@ -292,6 +301,29 @@
   .bar .avatar::after { display: none; }
   .bar .n { font-family: 'Saira'; font-weight: 700; font-size: 26px; text-align: right; }
   .bar .n small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .voters { margin-top: 40px; }
+  .voters-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; margin-bottom: 14px; }
+  .voters-head h3 { font-size: 26px; font-weight: 700; margin-top: 6px; }
+  .voters-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .search { width: 220px; padding: 12px 18px; border-radius: 999px; font-size: 14px; }
+  .btn.danger { background: transparent; border: 1px solid rgba(240, 2, 7, .55); box-shadow: none; color: #ff8a8a; padding: 12px 20px; }
+  .btn.danger::after { display: none; }
+  .btn.danger:hover { background: rgba(240, 2, 7, .15); }
+  .vlist { list-style: none; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: var(--card); }
+  .vlist li { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 14px 18px; border-top: 1px solid var(--line); animation: rise .4s var(--ease) both; }
+  .vlist li:first-child { border-top: 0; }
+  .vlist .who b { display: block; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+  .vlist .who small { color: var(--muted); font-size: 12px; }
+  .vlist .for { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: rgba(147, 31, 31, .45); border: 1px solid rgba(229, 43, 43, .3); white-space: nowrap; }
+  .vlist .del { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--line); transition: all .2s; }
+  .vlist .del:hover { color: #fff; background: #e52b2b; border-color: #e52b2b; }
+  .vlist .empty { display: block; text-align: center; color: var(--muted); padding: 26px; }
+  @media (max-width: 560px) {
+    .vlist li { grid-template-columns: 1fr auto; }
+    .vlist .for { grid-column: 1; justify-self: start; }
+    .vlist .del { grid-row: 1 / span 2; grid-column: 2; }
+    .search { width: 100%; }
+  }
   .crown { color: #ffd6d6; font-size: 11px; font-family: 'Saira'; font-weight: 700; letter-spacing: .2em; margin-left: 8px; }
 
   footer { border-top: 1px solid var(--line); padding: 22px 0 120px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 13px; }
@@ -353,7 +385,7 @@
         <span class="l"><span style="animation-delay:.28s">next <span class="grad">Vice</span></span></span>
         <span class="l"><span class="grad" style="animation-delay:.41s">President.</span></span>
       </h1>
-      <p class="lede rv" style="animation-delay:.55s">Five candidates. One vote per device. Pick who you want to lead Oracle Club alongside the president, then lock it in.</p>
+      <p class="lede rv" style="animation-delay:.55s">Five candidates. One vote per person. Pick who you want to lead Oracle Club alongside the president, then lock it in.</p>
       <div class="meta rv" style="animation-delay:.7s">
         <div><small>Position</small><strong>Vice-President</strong></div>
         <div><small>Candidates</small><strong>5 running</strong></div>
@@ -400,6 +432,16 @@
         <button class="btn ghost" id="toggleBtn" type="button">Close voting</button>
       </div>
       <div class="bars" id="bars"></div>
+      <div class="voters">
+        <div class="voters-head">
+          <div><div class="eyebrow">Ballots</div><h3 class="title">Who voted <span id="vCount" style="color:var(--muted);font-weight:500"></span></h3></div>
+          <div class="voters-tools">
+            <input class="search" id="vSearch" type="search" placeholder="Search names…" />
+            <button class="btn danger" id="clearBtn" type="button">Clear all</button>
+          </div>
+        </div>
+        <ul class="vlist" id="vlist"></ul>
+      </div>
     </div>
   </section>
 
@@ -420,7 +462,11 @@
     <div class="avatar" id="mAv"></div>
     <div class="eyebrow">Confirm your vote</div>
     <h3 class="title" id="mTitle" style="margin-top:8px"></h3>
-    <p>for Vice-President. Each device gets one vote, and it can't be changed once submitted.</p>
+    <p>for Vice-President. Each person gets one vote, and it can't be changed once submitted.</p>
+    <div class="field">
+      <label for="voterName">Your full name</label>
+      <input id="voterName" type="text" autocomplete="name" maxlength="60" placeholder="e.g. Sara Alharbi" />
+    </div>
     <div class="row">
       <button class="btn ghost" type="button" data-close>Go back</button>
       <button class="btn" type="button" id="confirmBtn">Confirm</button>
@@ -510,21 +556,34 @@
     $('#mAv').textContent = initials(c.name);
     $('#mTitle').textContent = c.name;
     $('#mErr').textContent = '';
+    const nameEl = $('#voterName');
+    nameEl.classList.remove('bad');
+    if (!nameEl.value) nameEl.value = store.get('oracle_vp_name') || '';
     modal.classList.add('open');
-    setTimeout(() => $('#confirmBtn').focus(), 50);
+    setTimeout(() => (nameEl.value ? $('#confirmBtn') : nameEl).focus(), 60);
   }
   const closeModal = () => modal.classList.remove('open');
   modal.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeModal));
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   $('#castBtn').addEventListener('click', openModal);
 
+  $('#voterName').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#confirmBtn').click(); });
   $('#confirmBtn').addEventListener('click', async () => {
     const btn = $('#confirmBtn');
+    const nameEl = $('#voterName');
+    const name = nameEl.value.replace(/\s+/g, ' ').trim();
+    if (name.length < 3 || !name.includes(' ')) {
+      nameEl.classList.remove('bad'); void nameEl.offsetWidth; nameEl.classList.add('bad');
+      $('#mErr').textContent = 'Please enter your full name (first and last).';
+      nameEl.focus();
+      return;
+    }
+    store.set('oracle_vp_name', name);
     btn.disabled = true; btn.textContent = 'Sending…';
     try {
       const res = await fetch('/api/vote', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-        body: JSON.stringify({ candidate: selected, clientId, fingerprint: await fingerprint() }),
+        body: JSON.stringify({ candidate: selected, name, clientId, fingerprint: await fingerprint() }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { store.set('oracle_vp_voted', selected); closeModal(); showDone(selected, true); }
@@ -562,10 +621,57 @@
     const data = await res.json();
     $('#keybox').hidden = true; $('#board').classList.add('on');
     renderResults(data);
+    loadVoters();
     return true;
+  }
+
+  let voters = [];
+  let candidatesById = {};
+  const candName = (id) => candidatesById[id] || id;
+  async function loadVoters() {
+    const res = await fetch('/api/admin/votes', { headers: { 'x-admin-key': adminKey } });
+    if (!res.ok) return;
+    voters = (await res.json()).votes;
+    renderVoters();
+  }
+  function renderVoters() {
+    const term = $('#vSearch').value.trim().toLowerCase();
+    const list = term ? voters.filter((v) => (v.name || '').toLowerCase().includes(term)) : voters;
+    $('#vCount').textContent = `(${voters.length})`;
+    const ul = $('#vlist');
+    ul.replaceChildren();
+    if (!list.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = voters.length ? 'No matches.' : 'No votes yet.';
+      ul.appendChild(li);
+      return;
+    }
+    list.forEach((v) => {
+      // Names are user input: build with textContent, never innerHTML.
+      const li = document.createElement('li');
+      const who = document.createElement('div'); who.className = 'who';
+      const b = document.createElement('b'); b.textContent = v.name || '(no name)';
+      const t = document.createElement('small');
+      t.textContent = new Date(v.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      who.append(b, t);
+      const f = document.createElement('span'); f.className = 'for'; f.textContent = candName(v.candidate);
+      const d = document.createElement('button'); d.className = 'del'; d.type = 'button'; d.title = 'Remove vote';
+      d.setAttribute('aria-label', `Remove vote by ${v.name || 'unknown'}`);
+      d.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+      d.addEventListener('click', () => removeVote(v));
+      li.append(who, f, d);
+      ul.appendChild(li);
+    });
+  }
+  async function removeVote(v) {
+    if (!confirm(`Remove ${v.name || 'this'}'s vote for ${candName(v.candidate)}? They will be able to vote again.`)) return;
+    const res = await fetch('/api/admin/votes?id=' + v.id, { method: 'DELETE', headers: { 'x-admin-key': adminKey } });
+    if (res.ok) { renderResults(await res.json()); loadVoters(); }
   }
   function renderResults(data) {
     lastOpen = data.open; live(data.open);
+    candidatesById = Object.fromEntries(data.candidates.map((c) => [c.id, c.name]));
     $('#toggleBtn').textContent = data.open ? 'Close voting' : 'Reopen voting';
     $('#totalN').textContent = data.total;
     const max = Math.max(1, ...data.candidates.map((c) => c.votes));
@@ -603,6 +709,13 @@
       if (lastOpen && !confirm('Close voting? No more votes will be accepted.')) return;
       const res = await fetch('/api/admin/voting', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey }, body: JSON.stringify({ open: !lastOpen }) });
       if (res.ok) renderResults(await res.json());
+    });
+    $('#vSearch').addEventListener('input', renderVoters);
+    $('#clearBtn').addEventListener('click', async () => {
+      if (!voters.length) return;
+      if (prompt(`This deletes ALL ${voters.length} votes and can't be undone.\nType CLEAR to confirm.`) !== 'CLEAR') return;
+      const res = await fetch('/api/admin/votes?id=all', { method: 'DELETE', headers: { 'x-admin-key': adminKey } });
+      if (res.ok) { renderResults(await res.json()); loadVoters(); }
     });
     if (adminKey) loadResults();
     setInterval(() => { if (adminKey && $('#board').classList.contains('on')) loadResults(); }, 3000);

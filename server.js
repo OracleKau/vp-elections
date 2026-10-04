@@ -30,6 +30,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS votes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     candidate   TEXT NOT NULL,
+    voter_name  TEXT,
+    name_key    TEXT,
     device_id   TEXT NOT NULL UNIQUE,
     client_id   TEXT NOT NULL UNIQUE,
     fingerprint TEXT,
@@ -40,12 +42,20 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   INSERT OR IGNORE INTO settings (key, value) VALUES ('voting_open', '1');
 `);
+// Migrate databases created before voter names existed.
+const cols = db.prepare('PRAGMA table_info(votes)').all().map((c) => c.name);
+if (!cols.includes('voter_name')) db.exec('ALTER TABLE votes ADD COLUMN voter_name TEXT');
+if (!cols.includes('name_key')) db.exec('ALTER TABLE votes ADD COLUMN name_key TEXT');
 
 const q = {
   byDevice: db.prepare('SELECT candidate FROM votes WHERE device_id = ? OR client_id = ? LIMIT 1'),
+  byName: db.prepare('SELECT 1 FROM votes WHERE name_key = ? LIMIT 1'),
   insert: db.prepare(
-    'INSERT INTO votes (candidate, device_id, client_id, fingerprint, ip_hash, user_agent) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO votes (candidate, voter_name, name_key, device_id, client_id, fingerprint, ip_hash, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ),
+  list: db.prepare('SELECT id, voter_name AS name, candidate, created_at FROM votes ORDER BY id DESC'),
+  remove: db.prepare('DELETE FROM votes WHERE id = ?'),
+  clear: db.prepare('DELETE FROM votes'),
   tally: db.prepare('SELECT candidate, COUNT(*) AS votes FROM votes GROUP BY candidate'),
   total: db.prepare('SELECT COUNT(*) AS n FROM votes'),
   getSetting: db.prepare('SELECT value FROM settings WHERE key = ?'),
@@ -87,6 +97,8 @@ function readBody(req, limit = 4096) {
   });
 }
 
+const cleanName = (s) => (typeof s === 'string' ? s.normalize('NFC').replace(/\s+/g, ' ').trim() : '');
+const nameKey = (s) => s.toLowerCase();
 const isUuid = (s) => typeof s === 'string' && /^[0-9a-f-]{36}$/i.test(s);
 const sha = (s) => createHash('sha256').update(String(s)).digest('hex').slice(0, 32);
 
@@ -135,17 +147,21 @@ async function handleApi(req, res, url) {
     let body;
     try { body = await readBody(req); } catch { return json(res, 400, { error: 'Invalid request.' }); }
     const { candidate, clientId, fingerprint } = body;
+    const name = cleanName(body.name);
 
     if (!votingOpen()) return json(res, 403, { error: 'Voting is closed.' });
     if (!CANDIDATE_IDS.has(candidate)) return json(res, 400, { error: 'Unknown candidate.' });
     if (!isUuid(clientId)) return json(res, 400, { error: 'Invalid device.' });
+    if (name.length < 3 || name.length > 60 || !name.includes(' '))
+      return json(res, 400, { error: 'Please enter your full name (first and last).' });
 
     const existing = q.byDevice.get(deviceId, clientId);
     if (existing) return json(res, 409, { error: 'This device has already voted.', candidate: existing.candidate });
+    if (q.byName.get(nameKey(name))) return json(res, 422, { error: 'Someone with this name has already voted. Ask an organizer if this is a mistake.' });
 
     try {
       q.insert.run(
-        candidate, deviceId, clientId,
+        candidate, name, nameKey(name), deviceId, clientId,
         typeof fingerprint === 'string' ? fingerprint.slice(0, 64) : null,
         sha(clientIp(req)),
         String(req.headers['user-agent'] || '').slice(0, 300)
@@ -159,6 +175,20 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === '/api/results' && req.method === 'GET') {
     if (!isAdmin(req)) return json(res, 401, { error: 'Unauthorized.' });
+    return json(res, 200, results());
+  }
+
+  if (url.pathname === '/api/admin/votes' && req.method === 'GET') {
+    if (!isAdmin(req)) return json(res, 401, { error: 'Unauthorized.' });
+    return json(res, 200, { votes: q.list.all() });
+  }
+
+  if (url.pathname === '/api/admin/votes' && req.method === 'DELETE') {
+    if (!isAdmin(req)) return json(res, 401, { error: 'Unauthorized.' });
+    const id = url.searchParams.get('id');
+    if (id === 'all') q.clear.run();
+    else if (/^\d+$/.test(id || '')) q.remove.run(Number(id));
+    else return json(res, 400, { error: 'Missing vote id.' });
     return json(res, 200, results());
   }
 

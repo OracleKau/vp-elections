@@ -14,10 +14,10 @@ ADMIN_KEY=change-me npm start   # http://localhost:3000
 
 ## Pages
 - `/` — ballot
-- `/results` — live results + open/close voting (asks for `ADMIN_KEY`)
+- `/results`: live results, the list of who voted (search, remove one vote, clear all), and open/close voting. Asks for `ADMIN_KEY`. Removing a vote lets that person vote again.
 
 ## One vote per device
-Each device gets an HttpOnly cookie **and** a localStorage ID, and both are unique in the DB, so a vote is blocked if either one matches. A hashed IP and a browser fingerprint are stored for audit only. They don't block votes, because everyone on venue Wi-Fi shares an IP and identical phones share fingerprints. A private/incognito window starts with no cookie or ID, so it can vote again. That's the limit of device-based voting without logins.
+Voters must enter their full name (first + last); the same name can only vote once (case-insensitive). Each device also gets an HttpOnly cookie **and** a localStorage ID, and both are unique in the DB, so a vote is blocked if either one matches. A hashed IP and a browser fingerprint are stored for audit only. They don't block votes, because everyone on venue Wi-Fi shares an IP and identical phones share fingerprints. A private/incognito window starts with no cookie or ID, so it can vote again, but it still needs a name that hasn't voted, and every name shows up on `/results`.
 
 ## Candidates
 Edit `CANDIDATES` in `server.js`.
